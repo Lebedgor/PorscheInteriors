@@ -1,0 +1,62 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+@font-face {
+  font-family: "Porsche Title";
+  src: local("Porsche Regular"),
+   url("./fonts/PorscheRegular/PorscheRegular.ttf") format("truetype");
+  font-weight: normal;
+  }
+
+@font-face {
+  font-family: "Porsche Regular";
+  src: local("Porsche Regular"),
+    url("./fonts/Porsche/PorscheNextTT-Regular.ttf") format("truetype");
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+  font-family: "Porsche Regular";
+  src: local("Porsche Regular"),
+    url("./fonts/Porsche/PorscheNextTT-ThinBold.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Porsche Regular";
+  src: local("Porsche Regular"),
+    url("./fonts/Porsche/PorscheNextTT-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+}
+
+@font-face {
+  font-family: "Porsche Regular";
+  src: local("Porsche Regular"),
+    url("./fonts/Porsche/PorscheNextTT-Italic.ttf") format("truetype");
+    font-weight: normal;
+    font-style: italic;
+}
+
+@font-face {
+  font-family: "Porsche Regular";
+  src: local("Porsche Regular"),
+    url("./fonts/Porsche/PorscheNextTT-BoldItalic.ttf") format("truetype");
+    font-weight: bold;
+    font-style: italic;
+}
+
+  
