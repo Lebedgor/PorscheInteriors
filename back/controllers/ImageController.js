@@ -9,7 +9,7 @@ export const add = async(req, res) => {
 
       const image = new Image({
         interior_id: req.body.id,
-        link: '/' + req.file.destination + '/' + req.file.originalname
+        link: '/' + req.file.destination + '/' + req.file.filename
       })
   
       const [saved, _] = await image.save()
@@ -22,16 +22,16 @@ export const add = async(req, res) => {
   
   
       res.json({
-        url: '/' + req.file.destination + '/' + req.file.originalname,
+        url: '/' + req.file.destination + '/' + req.file.filename,
         message: message,
-        name: req.file.originalname,
+        name: req.file.filename,
         saved
       })
 
     } else {
       res.json({
-        url: '/' + req.file.destination + '/' + req.file.originalname,
-        name: req.file.originalname,
+        url: '/' + req.file.destination + '/' + req.file.filename,
+        name: req.file.filename,
       })
     }
     

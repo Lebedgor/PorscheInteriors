@@ -1,4 +1,3 @@
-import Interior from "../models/InteriorMangoose.js";
 import Model from "../models/Model.js";
 
 
@@ -108,6 +107,8 @@ export const getAll = async(req, res) => {
 export const getOne = async(req, res) => {
   try {
 
+    const [model, __] = await Model.getModelInfo(req.params.id);
+
     const [interiors, _] = await Model.getOne(req.params.id);
 
     if(!interiors) {
@@ -116,7 +117,9 @@ export const getOne = async(req, res) => {
       })
     }
 
-    res.json(interiors)
+    res.json({
+      model, interiors
+    })
   } catch (error) {
     res.status(404).json({
       message: "Модель не найдена",

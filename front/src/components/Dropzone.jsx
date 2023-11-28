@@ -3,6 +3,7 @@ import React, {useEffect, useState} from 'react';
 import {useDropzone} from 'react-dropzone';
 import { useDispatch } from 'react-redux';
 import { useRef } from 'react';
+import imageCompression from 'browser-image-compression';
 
 const thumbsContainer = {
   display: 'flex',
@@ -37,6 +38,12 @@ const img = {
   height: '100%'
 };
 
+const options = {
+  maxSizeMB: 1,
+  maxWidthOrHeight: 1920,
+  useWebWorker: true,
+}
+
 
 function Previews(props) {
   const [files, setFiles] = useState([]);
@@ -57,17 +64,22 @@ function Previews(props) {
     onDrop: acceptedFiles => {
 
       setFiles(acceptedFiles.map(file => Object.assign(file, {
-        preview: URL.createObjectURL(file)
+        preview: URL.createObjectURL(file),
+        loaded: false
       })));
 
       let items = 0
 
-      acceptedFiles.forEach((file) => {
+      acceptedFiles.forEach(async(file) => {
+          let compressedFile = await imageCompression(file, options);
+          console.log(file)
+          console.log(compressedFile)
           const formData = new FormData()
           formData.append('id', props.interiorId)
           formData.append('folder', `${props.interior.name}-${props.interiorId}`)
-          formData.append('image', file)
-          axios.post('/upload_image', formData).then(res => {
+          formData.append('originalName', file.name)
+          formData.append('image', compressedFile)
+          await axios.post('/upload_image', formData).then(res => {
             if(res.data.saved){
               console.log("Файл " + res.data.name + " успешно загружен")
               items++;
@@ -76,6 +88,12 @@ function Previews(props) {
               }
             }
           })
+
+          setFiles(acceptedFiles.map(img => img.name === file.name ? (Object.assign(img, {
+            loaded: true,
+          })) : img));
+
+
       })
 
       
@@ -92,7 +110,11 @@ function Previews(props) {
   const thumbs = files.map(file => (
     <div style={thumb} key={file.name}>
       <div style={thumbInner}>
+        { file.loaded ? 
         <div className="preview-check-container"><svg className ="svg-loaded"><use xlinkHref="#svg-check"></use></svg></div>
+        :
+        null
+        }
         <img
           src={file.preview}
           style={img}

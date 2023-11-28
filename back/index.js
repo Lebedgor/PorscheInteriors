@@ -26,7 +26,9 @@ const storage = multer.diskStorage({
     cb(null, path)
   },
   filename: (req, file, cb) => {
-    cb(null, file.originalname)
+    console.log(file)
+    let fileName = req.body.name ? req.body.name + '_' + req.body.originalName : req.body.originalName;
+    cb(null, fileName)
   },
 })
 
@@ -38,7 +40,7 @@ const upload = multer({
           cb(null, true);
       } else {
           cb(null, false);
-          const err = new Error('Ращрешены только .png, .jpg и .jpeg форматы изображений!')
+          const err = new Error('Разрешены только .png, .jpg и .jpeg форматы изображений!')
           err.name = 'ExtensionError'
           return cb(err);
       }

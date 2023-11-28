@@ -2,7 +2,7 @@ import axios from 'axios'
 
 
 const instance = axios.create({
-  baseURL: 'https://back.porschednipro.com.ua/'
+  baseURL: process.env.REACT_APP_BASEURL
 })
 
 instance.interceptors.request.use((config) => {

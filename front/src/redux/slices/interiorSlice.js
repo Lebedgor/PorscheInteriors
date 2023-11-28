@@ -9,6 +9,7 @@ const initialState = {
   data: null,
   status: 'loading',
   interiors: [],
+  model: [],
 }
 
 
@@ -86,7 +87,8 @@ const carInteriorSlice = createSlice({
     })
     .addCase(getInteriors.fulfilled, (state, action) => {
       state.status = "loaded";
-      state.interiors = action.payload;
+      state.interiors = action.payload.interiors;
+      state.model = action.payload.model[0];
     })
     .addCase(getInteriors.rejected, (state) => {
       state.status = "error";

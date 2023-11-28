@@ -27,17 +27,6 @@ const MainPage = () => {
   const models = useSelector(state => state.carModel.models)
   const auth = !!useSelector(state => state.auth.data)
 
-  // const [models, setModels] = React.useState([
-  //   { 'id': 1, 'name': '718 Бокстер', 'image': '/images/car-models/718.jpg'},
-  //   { 'id': 2, 'name': '718 Кайман', 'image': '/images/car-models/718.jpg'},
-  //   { 'id': 3, 'name': '911', 'image': '/images/car-models/911.jpg'},
-  //   { 'id': 4, 'name': 'Тайкан', 'image': '/images/car-models/Taycan.jpg'},
-  //   { 'id': 6, 'name': 'Макан', 'image': '/images/car-models/Macan.jpg'},
-  //   { 'id': 7, 'name': 'Панамера', 'image': '/images/car-models/Panamera.jpg'},
-  //   { 'id': 8, 'name': 'Кайен', 'image': '/images/car-models/Cayenne.jpg'}
-
-  // ]);
-
   React.useEffect(() => {
     dispatch(getCarModels())
   }, [editFlag])
@@ -74,7 +63,7 @@ const MainPage = () => {
 
               <div className="model-image-container">
                 <Link to={`model/${model.model_id}`}>
-                  <img src={`https://back.porschednipro.com.ua${model.image}`} alt={model.name} />
+                  <img src={`${process.env.REACT_APP_BASEURL}${model.image}`} alt={model.name} />
                 </Link>
                 <div className="edit-container">
                   <button type="button" onClick={() => popupToggle(model)}>

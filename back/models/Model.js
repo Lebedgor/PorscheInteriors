@@ -38,7 +38,7 @@ class Model{
        image='${this.image}',
         sort='${this.sort}',
          user_id='${this.user_id}',
-          date_modified = NOW(),
+          date_modified = NOW()
             WHERE model_id = '${this.model_id}';`;
 
     return db.execute(sql);
@@ -52,6 +52,12 @@ class Model{
 
   static getOne(model_id) {
     let sql = `SELECT i.*, m.name as model_name FROM model m LEFT JOIN interior i ON (m.model_id = i.model_id) WHERE i.model_id = '${model_id}';`;
+
+    return db.execute(sql);
+  }
+
+  static getModelInfo(model_id) {
+    let sql = `SELECT * FROM model WHERE model_id = '${model_id}';`;
 
     return db.execute(sql);
   }

@@ -2,12 +2,19 @@ import React from 'react'
 import { useDispatch } from 'react-redux'
 import axios from '../axios'
 import { addInterior, updateInterior } from '../redux/slices/interiorSlice'
+import imageCompression from 'browser-image-compression';
 
 const PopupAddInterior = (props) => {
   
   const imageInput = React.useRef();
 
   const dispatch = useDispatch()
+
+  const options = {
+    maxSizeMB: 1,
+    maxWidthOrHeight: 1920,
+    useWebWorker: true,
+  }
 
   const pushInterior = async() => {
 
@@ -32,8 +39,11 @@ const PopupAddInterior = (props) => {
     try {
       const formData = new FormData()
       formData.append('folder', `${props.params.model_name}-interiors`)
+      formData.append('name', (props.params.model_name ? props.params.model_name : '') + '_' + (props.params.name ? props.params.name : ''))
       const file = event.target.files[0]
-      formData.append('image', file)
+      formData.append('originalName', file.name)
+      let compressedFile = await imageCompression(file, options);
+      formData.append('image', compressedFile)
       const { data } = await axios.post('/upload_image', formData)
       props.handleImage(data.url)
     } catch (error) {
@@ -75,7 +85,7 @@ const PopupAddInterior = (props) => {
             value={props.params.sort ? props.params.sort : ''} onChange={props.handleParams} /></div>
             { props.params.image ? 
               <div className="upload-image-container">
-                <img src={`http://localhost:4444${ props.params.image }`} alt="" />
+                <img src={`${process.env.REACT_APP_BASEURL}${ props.params.image }`} alt="" />
                 <button type="button" onClick={() => removeImage()} className="image-delete-btn">Удалить</button>
               </div>
               :

@@ -36,7 +36,7 @@ const InteriorImages = (props) => {
   }
 
   const removeImage = async(url, id) => {
-    dispatch(deleteImage({url: url, id: id}))
+    await dispatch(deleteImage({url: url, id: id}))
     changeFlag()
   }
 
@@ -98,7 +98,7 @@ const InteriorImages = (props) => {
             </svg>
           </button>
           
-            <img src={`https://back.porschednipro.com.ua${currentImage.img}`} alt={interior.name}/>
+            <img src={`${process.env.REACT_APP_BASEURL}${currentImage.img}`} alt={interior.name}/>
           
           <button className="btn-mate gallery-nav-btn next-btn" type="button" onClick={()=> actionGallery('next')}>
             <svg className="svg-angle">
@@ -126,7 +126,7 @@ const InteriorImages = (props) => {
                         </svg>
                       </button>
                     </div>
-                    <img src={`https://back.porschednipro.com.ua${image.link}`} onClick={()=> openGallery(image.link, i)} alt={interior.name} />
+                    <img src={`${process.env.REACT_APP_BASEURL}${image.link}`} onClick={()=> openGallery(image.link, i)} alt={interior.name} />
                   </div>
               ))}
             </Masonry>

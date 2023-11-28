@@ -40,13 +40,13 @@ class Interior{
   update() {
 
     let sql = `UPDATE interior SET 
-      name='${this.name}',
-       description='${this.description}',
-        image='${this.image}',
-         sort='${this.sort}',
-          user_id='${this.user_id}',
-           date_modified='${date_modified}'
-            WHERE interior_id = NOW();`;
+      name = '${this.name}',
+       description = '${this.description}',
+        image = '${this.image}',
+         sort = '${this.sort}',
+          user_id = '${this.user_id}',
+           date_modified = NOW()
+            WHERE interior_id = '${this.interior_id}';`;
 
     return db.execute(sql);
   }

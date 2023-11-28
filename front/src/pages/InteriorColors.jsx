@@ -12,6 +12,7 @@ const InteriorColors = () => {
   const [modelId, setModelId] = useState(false)
   const [params, setParams] = useState({name: '', image: '', sort: '', interior_id:'', model_id: '', model_name: ''})
   const interiors = useSelector(selector => selector.carInterior.interiors)
+  const modelInfo = useSelector(selector => selector.carInterior.model)
   const auth = !!useSelector(state => state.auth.data)
   const sortedInteriors = [ ...interiors ].sort((a, b) => a.sort - b.sort)
 
@@ -30,7 +31,7 @@ const InteriorColors = () => {
   const popupToggle = (interior) => {
     setParams({name: '', image: '', sort: '', interior_id:'', model_id: '', model_name: ''})
     if(interior){
-      setParams({name: interior.name, image: interior.image, sort: interior.sort, interior_id: interior.interior_id, model_id: modelId, model_name: interior.model_name})
+      setParams({name: interior.name, image: interior.image, sort: interior.sort, interior_id: interior.interior_id, model_id: modelId, model_name: modelInfo.name})
     }
     setPopupState(!popupState)
   }
@@ -74,7 +75,7 @@ const InteriorColors = () => {
                   </button>
                 </div>
                 <Link to={`/interior/${color.interior_id}`}>
-                  <img src={`https://back.porschednipro.com.ua${ color.image }`} alt={color.name} />
+                  <img src={`${process.env.REACT_APP_BASEURL}${ color.image }`} alt={color.name} />
                 </Link>
               </div> 
               <div className="interior-color-name"><Link to={`/interior/${color.interior_id}`}>{color.name}</Link></div>
