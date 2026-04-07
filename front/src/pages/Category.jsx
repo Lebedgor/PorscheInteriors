@@ -8,7 +8,7 @@ import Dropzone from '../components/Dropzone'
 import { deleteCategory, getCategoryTree, getRootCategories } from '../redux/slices/categorySlice'
 import { deleteImage, getImages, showMoreImages } from '../redux/slices/imageSlice'
 import axios, { getImageUrl, placeholderImage } from '../axios'
-import { getCachedImagePath, getPopupImageStyle } from '../imageSettings'
+import { getCachedImagePath } from '../imageSettings'
 
 const isVideoMedia = (mediaType, link) => {
   if (String(mediaType || '').trim().toLowerCase() === 'video') {
@@ -102,7 +102,9 @@ const Category = () => {
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [youtubeError, setYoutubeError] = useState('')
   const [isAddingYoutube, setIsAddingYoutube] = useState(false)
-  const galleryDragRef = useRef({ pointerId: null, startX: 0, startY: 0, originX: 0, originY: 0 })
+  const [loadedCategoryImages, setLoadedCategoryImages] = useState({})
+  const [loadedGalleryThumbs, setLoadedGalleryThumbs] = useState({})
+  const galleryDragRef = useRef({ pointerId: null, startX: 0, startY: 0, originX: 0, originY: 0, moved: false, suppressClickZoom: false })
   const galleryImageBoxRef = useRef(null)
   const galleryImageRef = useRef(null)
   const preloadedPopupImagesRef = useRef(new Set())
@@ -123,10 +125,10 @@ const Category = () => {
     height: 'auto',
     display: 'block'
   }), [])
-  const popupImageStyle = getPopupImageStyle(imageSettings)
   const hasChildCategories = categories.length > 0
   const showCategoryGrid = currentCategoryId === 0 || (currentCategoryId > 0 && categoryStatus === 'loaded' && hasChildCategories)
   const showImageSection = currentCategoryId > 0
+  const hasMediaContent = images.length > 0
   const activeGalleryImage = useMemo(() => {
     if (!currentImage.img) {
       return null
@@ -147,12 +149,58 @@ const Category = () => {
     ? getImageUrl(activeGalleryImage?.link || currentImage.img)
     : isActiveGalleryYoutube
       ? getImageUrl(activeGalleryImage?.preview_link || placeholderImage)
-      :
-      getImageUrl(getCachedImagePath(activeGalleryImage?.link || currentImage.img, 'popup', imageSettings))
+      : getImageUrl(getCachedImagePath(activeGalleryImage?.link || currentImage.img, 'popup', imageSettings))
   const activeGalleryEmbedUrl = isActiveGalleryYoutube ? getYouTubeEmbedUrl(activeGalleryImage?.link || currentImage.img) : ''
   const activeGalleryOriginalUrl = isActiveGalleryYoutube
     ? (activeGalleryImage?.link || currentImage.img)
     : getImageUrl(activeGalleryImage?.link || currentImage.img)
+  const placeholderImageUrl = getImageUrl(placeholderImage)
+  const markCategoryImageLoaded = useCallback((imageKey) => {
+    if (!imageKey) {
+      return
+    }
+
+    setLoadedCategoryImages((previousState) => {
+      if (previousState[imageKey]) {
+        return previousState
+      }
+
+      return {
+        ...previousState,
+        [imageKey]: true
+      }
+    })
+  }, [])
+  const handleCategoryImageError = useCallback((event, imageKey) => {
+    markCategoryImageLoaded(imageKey)
+
+    if (event.currentTarget.src !== placeholderImageUrl) {
+      event.currentTarget.src = placeholderImageUrl
+    }
+  }, [markCategoryImageLoaded, placeholderImageUrl])
+  const markGalleryThumbLoaded = useCallback((imageKey) => {
+    if (!imageKey) {
+      return
+    }
+
+    setLoadedGalleryThumbs((previousState) => {
+      if (previousState[imageKey]) {
+        return previousState
+      }
+
+      return {
+        ...previousState,
+        [imageKey]: true
+      }
+    })
+  }, [])
+  const handleGalleryThumbError = useCallback((event, imageKey) => {
+    markGalleryThumbLoaded(imageKey)
+
+    if (event.currentTarget.src !== placeholderImageUrl) {
+      event.currentTarget.src = placeholderImageUrl
+    }
+  }, [markGalleryThumbLoaded, placeholderImageUrl])
 
   const sortedCategories = useMemo(() => [...categories].sort((a, b) => {
     const leftSort = Number(a.sort) || 0
@@ -164,6 +212,14 @@ const Category = () => {
 
     return (Number(a.category_id) || 0) - (Number(b.category_id) || 0)
   }), [categories])
+
+  useEffect(() => {
+    setLoadedCategoryImages({})
+  }, [currentCategoryId, sortedCategories])
+
+  useEffect(() => {
+    setLoadedGalleryThumbs({})
+  }, [currentCategoryId])
 
   useEffect(() => {
     setPage(1)
@@ -502,6 +558,9 @@ const Category = () => {
   }
 
   const handleGalleryPointerDown = (event) => {
+    galleryDragRef.current.moved = false
+    galleryDragRef.current.suppressClickZoom = false
+
     if (galleryZoom <= 1 || !canZoomActiveGallery) {
       return
     }
@@ -514,23 +573,34 @@ const Category = () => {
       startX: event.clientX,
       startY: event.clientY,
       originX: galleryOffset.x,
-      originY: galleryOffset.y
+      originY: galleryOffset.y,
+      moved: false,
+      suppressClickZoom: false
     }
 
-    setIsDraggingGallery(true)
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const handleGalleryPointerMove = (event) => {
-    if (!isDraggingGallery || galleryDragRef.current.pointerId !== event.pointerId) {
+    if (galleryDragRef.current.pointerId !== event.pointerId || galleryZoom <= 1 || !canZoomActiveGallery) {
+      return
+    }
+
+    const deltaX = event.clientX - galleryDragRef.current.startX
+    const deltaY = event.clientY - galleryDragRef.current.startY
+
+    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+      if (!galleryDragRef.current.moved) {
+        galleryDragRef.current.moved = true
+        galleryDragRef.current.suppressClickZoom = true
+        setIsDraggingGallery(true)
+      }
+    } else {
       return
     }
 
     event.preventDefault()
     event.stopPropagation()
-
-    const deltaX = event.clientX - galleryDragRef.current.startX
-    const deltaY = event.clientY - galleryDragRef.current.startY
 
     setGalleryOffset(clampGalleryOffset({
       x: galleryDragRef.current.originX + deltaX,
@@ -543,12 +613,29 @@ const Category = () => {
       return
     }
 
+    const shouldSuppressClickZoom = galleryDragRef.current.suppressClickZoom
+
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
 
-    galleryDragRef.current = { pointerId: null, startX: 0, startY: 0, originX: 0, originY: 0 }
+    galleryDragRef.current = { pointerId: null, startX: 0, startY: 0, originX: 0, originY: 0, moved: false, suppressClickZoom: shouldSuppressClickZoom }
     setIsDraggingGallery(false)
+  }
+
+  const handleGalleryImageClick = (event) => {
+    if (!canZoomActiveGallery) {
+      return
+    }
+
+    if (galleryDragRef.current.suppressClickZoom) {
+      galleryDragRef.current.suppressClickZoom = false
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+    toggleGalleryZoom()
   }
 
   const handlers = useSwipeable({
@@ -591,14 +678,20 @@ const Category = () => {
     }
 
     if (isYoutubeMedia(media.media_type, media.link)) {
+      const thumbnailSource = getImageUrl(media.preview_link || placeholderImage)
+      const thumbnailStateKey = `${media.image_id || index}-${thumbnailSource}`
+      const isThumbnailLoaded = Boolean(loadedGalleryThumbs[thumbnailStateKey])
+
       return (
-        <div className="youtube-thumb-card" onClick={() => openGallery(media.link, index)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openGallery(media.link, index) } }}>
+        <div className={`youtube-thumb-card gallery-thumb-skeleton ${isThumbnailLoaded ? 'is-loaded' : ''}`} onClick={() => openGallery(media.link, index)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openGallery(media.link, index) } }}>
           <img
-            src={getImageUrl(media.preview_link || placeholderImage)}
+            src={thumbnailSource}
             style={interiorThumbnailStyle}
-            className="gallery-media-thumb"
+            className={`gallery-media-thumb gallery-media-thumb-image ${isThumbnailLoaded ? 'is-loaded' : ''}`}
             alt={media.alt || media.title || pageTitle}
             title={media.title || undefined}
+            onLoad={() => markGalleryThumbLoaded(thumbnailStateKey)}
+            onError={(event) => handleGalleryThumbError(event, thumbnailStateKey)}
           />
           <span className="youtube-play-badge" aria-hidden="true">
             <svg className="svg-youtube-play" viewBox="0 0 68 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -610,15 +703,23 @@ const Category = () => {
       )
     }
 
+    const thumbnailSource = getImageUrl(getCachedImagePath(media.link, 'thumbnail', imageSettings))
+    const thumbnailStateKey = `${media.image_id || index}-${thumbnailSource}`
+    const isThumbnailLoaded = Boolean(loadedGalleryThumbs[thumbnailStateKey])
+
     return (
-      <img
-        src={getImageUrl(getCachedImagePath(media.link, 'thumbnail', imageSettings))}
-        style={interiorThumbnailStyle}
-        className="gallery-media-thumb"
-        onClick={() => openGallery(media.link, index)}
-        alt={media.alt || media.title || pageTitle}
-        title={media.title || undefined}
-      />
+      <div className={`gallery-thumb-skeleton ${isThumbnailLoaded ? 'is-loaded' : ''}`}>
+        <img
+          src={thumbnailSource}
+          style={interiorThumbnailStyle}
+          className={`gallery-media-thumb gallery-media-thumb-image ${isThumbnailLoaded ? 'is-loaded' : ''}`}
+          onClick={() => openGallery(media.link, index)}
+          alt={media.alt || media.title || pageTitle}
+          title={media.title || undefined}
+          onLoad={() => markGalleryThumbLoaded(thumbnailStateKey)}
+          onError={(event) => handleGalleryThumbError(event, thumbnailStateKey)}
+        />
+      </div>
     )
   }
 
@@ -644,7 +745,7 @@ const Category = () => {
     : (currentCategory?.image || homeSeo?.og_image || placeholderImage)
   const ogImage = getImageUrl(ogImagePath)
   const ogUrl = window.location.href
-  const popupTitle = currentCategoryId > 0 ? 'Додати підкатегорію' : 'Додаты категорію'
+  const popupTitle = currentCategoryId > 0 ? 'Додати підкатегорію' : 'Додати категорію'
   const visibleBreadcrumbs = breadcrumbs.length ? breadcrumbs : [{ category_id: 0, name: 'Продукцiя' }]
 
   useEffect(() => {
@@ -717,62 +818,78 @@ const Category = () => {
                 </svg>
               </button>
             </div>
-            {isActiveGalleryVideo ?
-              <video
-                src={activeGallerySource}
-                className="gallery-video"
-                controls
-                autoPlay
-                playsInline
-                preload="metadata"
-                title={activeGalleryImage?.title || undefined}
-                aria-label={activeGalleryImage?.title || pageTitle}
-              />
-              : isActiveGalleryYoutube ?
-                <iframe
-                  src={activeGalleryEmbedUrl}
-                  className="gallery-youtube-frame"
-                  title={activeGalleryImage?.title || pageTitle}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
+            <div className="gallery-stage">
+              {isActiveGalleryVideo ?
+                <video
+                  src={activeGallerySource}
+                  className="gallery-video"
+                  controls
+                  autoPlay
+                  playsInline
+                  preload="metadata"
+                  title={activeGalleryImage?.title || undefined}
+                  aria-label={activeGalleryImage?.title || pageTitle}
                 />
-              :
-              <img
-                ref={galleryImageRef}
-                src={activeGallerySource}
-                style={{ ...popupImageStyle, transform: `translate(${galleryOffset.x}px, ${galleryOffset.y}px) scale(${galleryZoom})` }}
-                className={galleryZoom > 1 ? `gallery-image zoomed ${isDraggingGallery ? 'dragging' : ''}` : 'gallery-image'}
-                onDoubleClick={toggleGalleryZoom}
-                onPointerDown={handleGalleryPointerDown}
-                onPointerMove={handleGalleryPointerMove}
-                onPointerUp={stopGalleryDrag}
-                onPointerCancel={stopGalleryDrag}
-                alt={activeGalleryImage?.alt || activeGalleryImage?.title || pageTitle}
-                title={activeGalleryImage?.title || undefined}
-              />
-            }
+                : isActiveGalleryYoutube ?
+                  <iframe
+                    src={activeGalleryEmbedUrl}
+                    className="gallery-youtube-frame"
+                    title={activeGalleryImage?.title || pageTitle}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                :
+                <img
+                  ref={galleryImageRef}
+                  src={activeGallerySource}
+                  style={{ transform: `translate(${galleryOffset.x}px, ${galleryOffset.y}px) scale(${galleryZoom})` }}
+                  className={galleryZoom > 1 ? `gallery-image zoomed ${isDraggingGallery ? 'dragging' : ''}` : 'gallery-image'}
+                  onClick={handleGalleryImageClick}
+                  onPointerDown={handleGalleryPointerDown}
+                  onPointerMove={handleGalleryPointerMove}
+                  onPointerUp={stopGalleryDrag}
+                  onPointerCancel={stopGalleryDrag}
+                  alt={activeGalleryImage?.alt || activeGalleryImage?.title || pageTitle}
+                  title={activeGalleryImage?.title || undefined}
+                />
+              }
+            </div>
           </div>
           <button className="btn-mate gallery-nav-btn next-btn" type="button" onClick={(event) => { event.stopPropagation(); actionGallery('next') }}>
             <svg className="svg-angle">
               <use xlinkHref="#svg-angle"></use>
             </svg>
           </button>
+          <div className="gallery-mobile-nav" onClick={(event) => event.stopPropagation()}>
+            <button className="btn-mate gallery-mobile-nav-btn" type="button" onClick={() => actionGallery('prev')}>
+              <svg className="svg-angle angle-left">
+                <use xlinkHref="#svg-angle"></use>
+              </svg>
+            </button>
+            <button className="btn-mate gallery-mobile-nav-btn" type="button" onClick={() => actionGallery('next')}>
+              <svg className="svg-angle">
+                <use xlinkHref="#svg-angle"></use>
+              </svg>
+            </button>
+          </div>
         </div>
         : null}
 
-      <div className="breadcrumbs">
-        {visibleBreadcrumbs.map((breadcrumb, index) => {
-          const isLast = index === visibleBreadcrumbs.length - 1
-          const breadcrumbLink = Number(breadcrumb.category_id) > 0 ? `/category/${breadcrumb.category_id}` : '/'
+      {currentCategoryId > 0 ?
+        <div className="breadcrumbs">
+          {visibleBreadcrumbs.map((breadcrumb, index) => {
+            const isLast = index === visibleBreadcrumbs.length - 1
+            const breadcrumbLink = Number(breadcrumb.category_id) > 0 ? `/category/${breadcrumb.category_id}` : '/'
 
-          return (
-            <React.Fragment key={`${breadcrumb.category_id}-${index}`}>
-              {isLast ? <span>{breadcrumb.name}</span> : <Link to={breadcrumbLink}>{breadcrumb.name}</Link>}
-              {!isLast ? <span className="breadcrumbs-separator">/</span> : null}
-            </React.Fragment>
-          )
-        })}
-      </div>
+            return (
+              <React.Fragment key={`${breadcrumb.category_id}-${index}`}>
+                {isLast ? <span>{breadcrumb.name}</span> : <Link to={breadcrumbLink}>{breadcrumb.name}</Link>}
+                {!isLast ? <span className="breadcrumbs-separator">/</span> : null}
+              </React.Fragment>
+            )
+          })}
+        </div>
+        : null}
 
       <div className="page-title">
         {pageHeading}
@@ -780,35 +897,47 @@ const Category = () => {
 
       {showCategoryGrid ?
         <div className="category-colors-container">
-          {sortedCategories.map((category) => (
-            <div className="category-color-card" key={category.category_id}>
-              <div className={`category-color-card-inner ${currentCategoryId === 0 ? 'main-category' : ''}`}>
-                <div className="category-color-image">
-                  <Link to={`/category/${category.category_id}`}>
-                    <img src={getImageUrl(getCachedImagePath(category.image, 'thumbnail', imageSettings))} alt={category.name} />
-                  </Link>
-                  {auth ?
-                    <div className="edit-container">
-                      <button type="button" onClick={() => popupToggle(category)}>
-                        <svg className="svg-edit-card">
-                          <use xlinkHref="#svg-pencyl"></use>
-                        </svg>
-                      </button>
-                      <button type="button" onClick={() => removeCategory(category.category_id)}>
-                        <svg className="svg-remove-card">
-                          <use xlinkHref="#svg-trash"></use>
-                        </svg>
-                      </button>
-                    </div>
-                    : null}
-                </div>
+          {sortedCategories.map((category) => {
+            const categoryThumbnailPath = getCachedImagePath(category.image, 'thumbnail', imageSettings)
+            const categoryImageStateKey = `${category.category_id}-${categoryThumbnailPath}`
+            const isCategoryImageLoaded = Boolean(loadedCategoryImages[categoryImageStateKey])
 
-                <div className="category-color-name">
-                  <Link to={`/category/${category.category_id}`}>{category.name}</Link>
+            return (
+              <div className="category-color-card" key={category.category_id}>
+                <div className={`category-color-card-inner ${currentCategoryId === 0 ? 'main-category' : ''}`}>
+                  <div className={`category-color-image ${isCategoryImageLoaded ? 'is-loaded' : ''}`}>
+                    <Link className="category-color-image-link" to={`/category/${category.category_id}`}>
+                      <img
+                        className={isCategoryImageLoaded ? 'is-loaded' : ''}
+                        src={getImageUrl(categoryThumbnailPath)}
+                        alt={category.name}
+                        onLoad={() => markCategoryImageLoaded(categoryImageStateKey)}
+                        onError={(event) => handleCategoryImageError(event, categoryImageStateKey)}
+                      />
+                    </Link>
+                    {auth ?
+                      <div className="edit-container">
+                        <button type="button" onClick={() => popupToggle(category)}>
+                          <svg className="svg-edit-card">
+                            <use xlinkHref="#svg-pencyl"></use>
+                          </svg>
+                        </button>
+                        <button type="button" onClick={() => removeCategory(category.category_id)}>
+                          <svg className="svg-remove-card">
+                            <use xlinkHref="#svg-trash"></use>
+                          </svg>
+                        </button>
+                      </div>
+                      : null}
+                  </div>
+
+                  <div className="category-color-name">
+                    <Link to={`/category/${category.category_id}`}>{category.name}</Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {auth ?
             <div className="category-color-card">
@@ -838,36 +967,38 @@ const Category = () => {
 
       {showImageSection ?
         <>
-          <div className="media-gallery-section">
-            <div className="page-title">Фото та вiдео</div>
-            <div className="interior-photos-container">
-              <div className="gallery-container">
-                {images ? images.map((image, i) => (
-                  <div className="image-container" key={image.image_id}>
-                    {auth ?
-                      <div className="edit-container">
-                        <button type="button" className="btn-mate" onClick={() => toggleImagePopup(image)}>
-                          <svg className="svg-edit-card">
-                            <use xlinkHref="#svg-pencyl"></use>
-                          </svg>
-                        </button>
-                        <button type="button" className="btn-mate" onClick={() => removeImage(image.link, image.image_id)}>
-                          <svg className="svg-remove-card">
-                            <use xlinkHref="#svg-trash"></use>
-                          </svg>
-                        </button>
+          {hasMediaContent ?
+            <div className="media-gallery-section">
+              <div className="page-title">Фото та вiдео</div>
+              <div className="interior-photos-container">
+                <div className="gallery-container">
+                  {images ? images.map((image, i) => (
+                    <div className="image-container" key={image.image_id}>
+                      {auth ?
+                        <div className="edit-container">
+                          <button type="button" className="btn-mate" onClick={() => toggleImagePopup(image)}>
+                            <svg className="svg-edit-card">
+                              <use xlinkHref="#svg-pencyl"></use>
+                            </svg>
+                          </button>
+                          <button type="button" className="btn-mate" onClick={() => removeImage(image.link, image.image_id)}>
+                            <svg className="svg-remove-card">
+                              <use xlinkHref="#svg-trash"></use>
+                            </svg>
+                          </button>
+                        </div>
+                        : null}
+                      <div className="inner-container">
+                        {renderGalleryItem(image, i)}
                       </div>
-                      : null}
-                    <div className="inner-container">
-                      {renderGalleryItem(image, i)}
                     </div>
-                  </div>
-                )) : null}
+                  )) : null}
+                </div>
               </div>
             </div>
-          </div>
+            : null}
 
-          {pages > page ?
+          {hasMediaContent && pages > page ?
             <div className="show-more-block"><button type="button" onClick={showMore}>Показати більше</button></div>
             : null}
 

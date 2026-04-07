@@ -9,7 +9,7 @@ const Header = () => {
   const isAuth = useSelector(isAuthInfo);
 
   const getLogout = () => {
-    if (window.confirm('Вы действительно хотите выйти?')){
+    if (window.confirm('Ви дійсно хочете вийти?')){
       dispatch(logout())
     }
 
@@ -18,18 +18,25 @@ const Header = () => {
   return (
     <div className="header-container">
       <div className="header">
-        <div className="header-title">
-         <Link to="/">PORSCHE</Link>
-        </div>
-      </div>
-      <div className="menu-container">
-        {isAuth ?
-          <div className="autorization-container">
-            <div className="login-block">
-              <div className="user-settings-block"><Link to="/settings">Настройки</Link><button onClick={getLogout}>Выйти</button></div>
-            </div>
+        <div className="header-brand">
+          <div className="header-kicker">Персональний каталог продавця</div>
+          <div className="header-title">
+            <Link to="/">PORSCHE</Link>
           </div>
-          : null}
+        </div>
+        <div className="header-actions">
+          <a className="header-contact-link" href="tel:+380674457516">Консультація</a>
+          {isAuth ?
+            <div className="autorization-container">
+              <div className="login-block">
+                <div className="user-settings-block">
+                  <Link to="/settings">Налаштування</Link>
+                  <button onClick={getLogout}>Вийти</button>
+                </div>
+              </div>
+            </div>
+            : null}
+        </div>
       </div>
       <div className="svg-images-container" style={{position: 'absolute',	left: '-9999px'}}>
         <svg xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink">

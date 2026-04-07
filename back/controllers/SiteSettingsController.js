@@ -329,6 +329,38 @@ const escapeHtml = (value = '') => String(value)
 
 const normalizeMetaText = (value, fallback = '') => String(value || fallback).trim()
 
+const normalizeOrigin = (value = '') => String(value || '').trim().replace(/\/+$/, '')
+
+const getForwardedHeaderValue = (req, headerName) => {
+  const rawHeader = req.headers?.[headerName]
+
+  if (Array.isArray(rawHeader)) {
+    return String(rawHeader[0] || '').trim()
+  }
+
+  return String(rawHeader || '').split(',')[0].trim()
+}
+
+const getRequestOrigin = (req) => {
+  const publicSiteUrl = normalizeOrigin(process.env.PUBLIC_SITE_URL)
+
+  if (publicSiteUrl) {
+    return publicSiteUrl
+  }
+
+  const forwardedProtocol = getForwardedHeaderValue(req, 'x-forwarded-proto')
+  const forwardedHost = getForwardedHeaderValue(req, 'x-forwarded-host')
+  const requestProtocol = forwardedProtocol || req.protocol || 'https'
+  const requestHost = forwardedHost || req.get('host') || ''
+  const normalizedHost = requestHost.replace(/^back\./i, '')
+
+  if (!normalizedHost) {
+    return ''
+  }
+
+  return `${requestProtocol}://${normalizedHost}`
+}
+
 const toAbsoluteUrl = (value, req) => {
   const normalizedValue = String(value || '').trim()
 
@@ -346,7 +378,7 @@ const toAbsoluteUrl = (value, req) => {
 
   const normalizedPath = normalizedValue.startsWith('/') ? normalizedValue : `/${normalizedValue}`
 
-  return `${req.protocol}://${req.get('host')}${normalizedPath}`
+  return `${getRequestOrigin(req)}${normalizedPath}`
 }
 
 const getFrontendTemplate = () => {
@@ -389,7 +421,7 @@ const resolveSeoMetaForRoute = async (req) => {
   const defaultOgTitle = normalizeMetaText(homeSeoSettings.og_title, defaultTitle)
   const defaultOgDescription = normalizeMetaText(homeSeoSettings.og_description, defaultDescription)
   const defaultOgImage = toAbsoluteUrl(homeSeoSettings.og_image, req)
-  const canonicalUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`
+  const canonicalUrl = `${getRequestOrigin(req)}${req.originalUrl}`
   const pathName = String(req.path || '')
   const routeId = Number(req.params?.id)
 

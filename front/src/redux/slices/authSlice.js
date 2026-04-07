@@ -6,7 +6,7 @@ import axios from '../../axios'
 const initialState = {
   data: null,
   user: null,
-  status: 'loading'
+  status: 'loaded'
 }
 
 export const fetchAuth = createAsyncThunk('auth/fetchAuth', async (params) => {
@@ -15,10 +15,20 @@ export const fetchAuth = createAsyncThunk('auth/fetchAuth', async (params) => {
   return data
 })
 
-export const fetchAuthMe = createAsyncThunk('auth/fetchAuthMe', async () => {
-  const { data } = await axios.get('/auth/me')
+export const fetchAuthMe = createAsyncThunk('auth/fetchAuthMe', async (_, { rejectWithValue }) => {
+  try {
+    const { data } = await axios.get('/auth/me')
 
-  return data
+    return data
+  } catch (error) {
+    const status = error?.response?.status
+
+    if (status === 401 || status === 403) {
+      return rejectWithValue({ unauthorized: true })
+    }
+
+    throw error
+  }
 })
 
 
@@ -53,9 +63,15 @@ const authSlice = createSlice({
       state.status = "loaded";
       state.data = action.payload;
     })
-    .addCase(fetchAuthMe.rejected, (state) => {
-      state.status = "error";
+    .addCase(fetchAuthMe.rejected, (state, action) => {
+      const isUnauthorized = Boolean(action.payload?.unauthorized)
+
+      state.status = isUnauthorized ? "loaded" : "error";
       state.data = null;
+
+      if (isUnauthorized) {
+        window.localStorage.removeItem('token')
+      }
     })
   }
 })

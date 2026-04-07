@@ -17,9 +17,11 @@ function App() {
   const dispatch = useDispatch()
 
   React.useEffect(() => {
-    dispatch(fetchAuthMe())
+    if (window.localStorage.getItem('token')) {
+      dispatch(fetchAuthMe())
+    }
     dispatch(fetchSiteSettings())
-  }, [])
+  }, [dispatch])
 
   return (
     <div className="app-wrapper">

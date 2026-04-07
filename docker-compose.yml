@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: porsche
+      MYSQL_USER: porsche
+      MYSQL_PASSWORD: porsche
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  back:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PORT: 4444
+      DB_HOST: db
+      DB_USER: porsche
+      DB_NAME: porsche
+      DB_PASSWORD: porsche
+      JWT_SECRET: HfpLdfNhb123
+    ports:
+      - "4444:4444"
+    volumes:
+      - ./uploads:/app/uploads
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - back
+    environment:
+      PORT: 8080
+      HOST: 0.0.0.0
+      BROWSER: none
+      REACT_APP_BASEURL: http://localhost:4444
+      REACT_APP_IMAGE_BASEURL: http://localhost:4444
+      REACT_APP_IMAGE_FALLBACK_BASEURL: http://localhost:8080
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:

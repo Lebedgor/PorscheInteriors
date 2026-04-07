@@ -3,7 +3,6 @@ import axios from 'axios'
 
 const baseURL = process.env.REACT_APP_BASEURL || ''
 const localImageBaseURL = baseURL
-const remoteImageBaseURL = process.env.REACT_APP_IMAGE_BASEURL || baseURL
 export const placeholderImage = '/uploads/placeholder.jpg'
 const isAbsoluteUrl = (value = '') => /^https?:\/\//i.test(String(value))
 const normalizeRelativeImagePath = (imagePath = '') => {
@@ -63,7 +62,7 @@ export const getSiteImageUrl = (imagePath) => {
     return buildImageUrl(localImageBaseURL, normalizedPath)
   }
 
-  return buildImageUrl(remoteImageBaseURL, normalizedPath)
+  return buildImageUrl(localImageBaseURL, normalizedPath)
 }
 export const handleSiteImageFallback = (event) => {
   const currentImage = event.currentTarget
@@ -103,8 +102,15 @@ const instance = axios.create({
 })
 
 instance.interceptors.request.use((config) => {
-  config.headers.Authorization = window.localStorage.getItem('token');
-  return config;
+  const token = window.localStorage.getItem('token')
+
+  if (token) {
+    config.headers.Authorization = token
+  } else if (config.headers?.Authorization) {
+    delete config.headers.Authorization
+  }
+
+  return config
 })
 
 
